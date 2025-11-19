@@ -5,5 +5,5 @@
 To run the warehouse operation simulation, execute the `main.py` file:
 
 ```bash
-python main.py
+python3 main.py
 ```
