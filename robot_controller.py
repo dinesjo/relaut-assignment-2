@@ -3,6 +3,7 @@ from time import sleep
 from message import MessageType
 from logger import robot_log, warning_log, error_log
 
+INDUCE_ARM_FAILURE = False  # For testing error handling
 
 class RobotState(Enum):
     IDLE = "IDLE"
@@ -114,8 +115,22 @@ class RobotController:
         self.state = RobotState.EXTENDING_ARM
         robot_log(f"[ROBOT] Extending arm to ({self.FETCH_X_m}, {self.FETCH_Y_m})")
         sleep(1)  # Simulate arm movement
-        self.arm_horizontal_m = self.FETCH_X_m
-        self.arm_vertical_m = self.FETCH_Y_m
+        increment_m = 0.25  # 0.1 causes rounding error
+        while (self.arm_horizontal_m < self.FETCH_X_m or self.arm_vertical_m < self.FETCH_Y_m):
+            initial_horizontal = self.arm_horizontal_m
+            initial_vertical = self.arm_vertical_m
+            if self.arm_horizontal_m < self.FETCH_X_m and not INDUCE_ARM_FAILURE:
+                self.arm_horizontal_m += increment_m
+            if self.arm_vertical_m < self.FETCH_Y_m:
+                self.arm_vertical_m += increment_m
+            sleep(0.1)  # Simulate incremental movement
+            robot_log(f"[ROBOT] Arm position: ({self.arm_horizontal_m:.2f}, {self.arm_vertical_m:.2f})")
+            # SAFETY CHECK: Detect arm failure (stuck)
+            if (self.arm_horizontal_m == initial_horizontal and self.arm_vertical_m == initial_vertical):
+                error_log(f"[ROBOT] ERROR: Arm extension failure detected!")
+                break  # Exit loop, assert will catch
+
+        assert self.arm_horizontal_m == self.FETCH_X_m and self.arm_vertical_m == self.FETCH_Y_m
 
         # Grip box
         robot_log(f"[ROBOT] Gripping box")
